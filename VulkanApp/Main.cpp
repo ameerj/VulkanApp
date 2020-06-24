@@ -7,25 +7,39 @@
 #include <glm/mat4x4.hpp>
 
 #include <iostream>
+#include <stdexcept>
+#include <vector>
 
-int main() {
+#include "VulkanRenderer.h"
+
+GLFWwindow* window;
+VulkanRenderer vk_renderer;
+
+void initWindow(std::string wName = "Test Window", const int width = 800, const int height = 600) {
+	// initialize glfw
 	glfwInit();
 
+	// glfw to not work with opengl
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	GLFWwindow* window = glfwCreateWindow(800, 600, "Hello Vulkan", nullptr, nullptr);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-	uint32_t extensionCount = 0;
-	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+	window = glfwCreateWindow(width, height, wName.c_str(), nullptr, nullptr);
+}
 
-	printf("Extension count: %i\n", extensionCount);
-	glm::vec3 test(1.0f);
-	glm::mat3 testmat(1.0f);
+int main() {
 
-	auto res = testmat * test;
+	//create window
+	initWindow();
+	if (vk_renderer.init(window) == EXIT_FAILURE) {
+		return EXIT_FAILURE;
+	}
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 	}
+
+	vk_renderer.cleanup();
+
 	glfwDestroyWindow(window);
 	glfwTerminate();
 
