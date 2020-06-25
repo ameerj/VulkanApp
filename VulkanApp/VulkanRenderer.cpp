@@ -20,6 +20,7 @@ int VulkanRenderer::init(GLFWwindow* newWindow)  {
 		getPhysicalDevice();
 		createLogicalDevice();
 		createSwapchain();
+		createGraphicsPipeline();
 	}
 	catch (const std::runtime_error &e) {
 		printf("Error: %s\n", e.what());
@@ -104,11 +105,8 @@ void VulkanRenderer::createInstance() {
 		createInfo.pNext = nullptr;
 	}
 
-	VkResult res = vkCreateInstance(&createInfo, nullptr, &instance);
+	VKRes(vkCreateInstance(&createInfo, nullptr, &instance));
 
-	if (res != VK_SUCCESS) {
-		throw std::runtime_error("Failed to create Vulkan instance");
-	}
 
 }
 
@@ -139,10 +137,9 @@ void VulkanRenderer::createLogicalDevice() {
 	VkPhysicalDeviceFeatures device_features = {};
 	device_create_info.pEnabledFeatures = &device_features;
 
-	VkResult res = vkCreateDevice(mainDevice.physical_device, &device_create_info, nullptr, &mainDevice.logical_device);
-	if (res != VK_SUCCESS) {
-		throw std::runtime_error("Failed to create logical device");
-	}
+	VKRes(vkCreateDevice(mainDevice.physical_device, &device_create_info, nullptr, &mainDevice.logical_device));
+
+
 
 	// Queues created with device
 	vkGetDeviceQueue(mainDevice.logical_device, indices.graphics_family, 0, &graphics_queue);
@@ -162,10 +159,7 @@ void VulkanRenderer::createDebugMessenger() {
 }
 
 void VulkanRenderer::createSurface() {
-	VkResult res =glfwCreateWindowSurface(instance, window, nullptr, &surface);
-	if (res != VK_SUCCESS) {
-		throw std::runtime_error("Failed to create surface");
-	}
+	VKRes(glfwCreateWindowSurface(instance, window, nullptr, &surface));
 }
 
 void VulkanRenderer::createSwapchain() {
@@ -213,10 +207,8 @@ void VulkanRenderer::createSwapchain() {
 	}
 	sc_create_info.oldSwapchain = VK_NULL_HANDLE;
 
-	VkResult res = vkCreateSwapchainKHR(mainDevice.logical_device, &sc_create_info, nullptr, &swapchain);
-	if (res != VK_SUCCESS) {
-		throw std::runtime_error("Cannot create swapchain");
-	}
+	VKRes(vkCreateSwapchainKHR(mainDevice.logical_device, &sc_create_info, nullptr, &swapchain));
+
 
 	sc_img_format = format.format;
 	sc_extent = extent;
@@ -234,6 +226,34 @@ void VulkanRenderer::createSwapchain() {
 		sc_image.image_view = createIMageView(img, sc_img_format, VK_IMAGE_ASPECT_COLOR_BIT);
 		sc_images.push_back(sc_image);
 	}
+}
+
+void VulkanRenderer::createGraphicsPipeline() {
+	auto vertex_shader_code = readFile("shaders/vert.spv");
+	auto fragment_shader_code = readFile("shaders/frag.spv");
+
+	VkShaderModule vertex_shader = createShaderModule(vertex_shader_code);
+	VkShaderModule fragment_shader = createShaderModule(fragment_shader_code);
+
+	VkPipelineShaderStageCreateInfo vertex_info = {};
+	vertex_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertex_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertex_info.module = vertex_shader;
+	vertex_info.pName = "main";
+
+	VkPipelineShaderStageCreateInfo fragment_info = {};
+	fragment_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragment_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragment_info.module = fragment_shader;
+	fragment_info.pName = "main";
+
+	VkPipelineShaderStageCreateInfo shader_stages[] = { vertex_info, fragment_info };
+
+	// create pipeline
+
+	// destroy shader modules after pipeline has been created.
+	vkDestroyShaderModule(mainDevice.logical_device, vertex_shader, nullptr);
+	vkDestroyShaderModule(mainDevice.logical_device, fragment_shader, nullptr);
 }
 
 bool VulkanRenderer::checkInstanceExtensionsSupport(std::vector<const char*>* checkExtenstions) {
@@ -498,9 +518,18 @@ VkImageView VulkanRenderer::createIMageView(VkImage image, VkFormat format, VkIm
 	view_info.subresourceRange.layerCount = 1;
 
 	VkImageView img_view;
-	VkResult res = vkCreateImageView(mainDevice.logical_device, &view_info, nullptr, &img_view);
-	if (res != VK_SUCCESS) {
-		throw std::runtime_error("Cant make image view");
-	}
+	VKRes(vkCreateImageView(mainDevice.logical_device, &view_info, nullptr, &img_view));
 	return img_view;
+}
+
+VkShaderModule VulkanRenderer::createShaderModule(const std::vector<char>& code) {
+	VkShaderModuleCreateInfo shader_info = {};
+	shader_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	shader_info.codeSize = code.size();
+	shader_info.pCode = reinterpret_cast<const uint32_t*>(code.data());
+
+	VkShaderModule shader_module;
+	VKRes(vkCreateShaderModule(mainDevice.logical_device, &shader_info, nullptr, &shader_module));
+	
+	return shader_module;
 }

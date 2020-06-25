@@ -3,11 +3,10 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include <stdexcept>
 #include <vector>
 #include <set>
 #include <algorithm>
-
+#include <string>
 #include "Utilities.h"
 
 class VulkanRenderer {
@@ -56,6 +55,7 @@ private:
 	void createDebugMessenger();
 	void createSurface();
 	void createSwapchain();
+	void createGraphicsPipeline();
 
 	// - Support funcs
 	bool checkInstanceExtensionsSupport(std::vector<const char*>* checkExtenstions);
@@ -87,5 +87,6 @@ private:
 
 
 	VkImageView createIMageView(VkImage image, VkFormat format, VkImageAspectFlags flags);
+	VkShaderModule createShaderModule(const std::vector<char>& code);
 };
 
