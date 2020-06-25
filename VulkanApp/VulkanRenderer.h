@@ -5,6 +5,9 @@
 
 #include <stdexcept>
 #include <vector>
+#include <set>
+#include <algorithm>
+
 #include "Utilities.h"
 
 class VulkanRenderer {
@@ -24,7 +27,10 @@ private:
 		VkDevice logical_device;
 	} mainDevice;
 	VkQueue graphics_queue;
-
+	VkQueue presentation_queue;
+	VkSurfaceKHR surface;
+	VkSwapchainKHR swapchain;
+	std::vector<SwapchainImage> sc_images;
 
 	VkDebugUtilsMessengerEXT debugMessenger;
 
@@ -37,17 +43,23 @@ private:
 	const bool enableValidationLayers = true;
 #endif
 
-
+	// Utility
+	VkFormat sc_img_format;
+	VkExtent2D sc_extent;
+	
 	// Vulkan functions
 	void getPhysicalDevice();
 
 	// - Create funcs
 	void createInstance();
 	void createLogicalDevice();
-	void setupDebugMessenger();
+	void createDebugMessenger();
+	void createSurface();
+	void createSwapchain();
 
 	// - Support funcs
 	bool checkInstanceExtensionsSupport(std::vector<const char*>* checkExtenstions);
+	bool checkDeviceInstanceExtensionsSupport(VkPhysicalDevice device);
 	bool checkDeviceSuitable(VkPhysicalDevice device);
 	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
 
@@ -56,6 +68,12 @@ private:
 	
 	
 	QueueFamilyIndices getQueueFamilies(VkPhysicalDevice device);
+	SwapchainDetails getSwapchainDetails(VkPhysicalDevice device);
+
+	VkSurfaceFormatKHR chooseBestFormat(const std::vector<VkSurfaceFormatKHR>& formats);
+	VkPresentModeKHR chooseBestPresMode(const std::vector<VkPresentModeKHR>& modes);
+	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+
 	bool checkValidationLayerSupport();
 	std::vector<const char*> getRequiredExtensions();
 
@@ -66,5 +84,8 @@ private:
 		void* pUserData);
 
 	static void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
+
+
+	VkImageView createIMageView(VkImage image, VkFormat format, VkImageAspectFlags flags);
 };
 
