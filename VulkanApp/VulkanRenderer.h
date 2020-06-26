@@ -31,8 +31,14 @@ private:
 	VkSwapchainKHR swapchain;
 	std::vector<SwapchainImage> sc_images;
 
-	VkDebugUtilsMessengerEXT debugMessenger;
+	// - Pipeline
+	VkPipeline graphics_pipeline;
+	VkPipelineLayout pipeline_layout;
+	VkRenderPass render_pass;
 
+
+	// Validation
+	VkDebugUtilsMessengerEXT debugMessenger;
 	const std::vector<const char*> validationLayers = {
 		"VK_LAYER_KHRONOS_validation"
 	};
@@ -56,6 +62,7 @@ private:
 	void createSurface();
 	void createSwapchain();
 	void createGraphicsPipeline();
+	void createRenderPass();
 
 	// - Support funcs
 	bool checkInstanceExtensionsSupport(std::vector<const char*>* checkExtenstions);
