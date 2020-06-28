@@ -29,13 +29,18 @@ private:
 	VkQueue presentation_queue;
 	VkSurfaceKHR surface;
 	VkSwapchainKHR swapchain;
-	std::vector<SwapchainImage> sc_images;
+
+	std::vector<SwapchainImage> swapchain_images;
+	std::vector<VkFramebuffer> swapchain_framebuffers;
+	std::vector<VkCommandBuffer> command_buffers;
 
 	// - Pipeline
 	VkPipeline graphics_pipeline;
 	VkPipelineLayout pipeline_layout;
 	VkRenderPass render_pass;
 
+	// - Pools
+	VkCommandPool graphics_command_pool;
 
 	// Validation
 	VkDebugUtilsMessengerEXT debugMessenger;
@@ -63,6 +68,11 @@ private:
 	void createSwapchain();
 	void createGraphicsPipeline();
 	void createRenderPass();
+	void createFramebuffers();
+	void createCommandPool();
+	void createCommandBuffers();
+
+	void recordCommands();
 
 	// - Support funcs
 	bool checkInstanceExtensionsSupport(std::vector<const char*>* checkExtenstions);

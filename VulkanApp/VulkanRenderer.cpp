@@ -2,13 +2,9 @@
 #include "VulkanRenderer.h"
 #include <array>
 
-VulkanRenderer::VulkanRenderer()
-{
-}
+VulkanRenderer::VulkanRenderer(){}
 
-VulkanRenderer::~VulkanRenderer()
-{
-}
+VulkanRenderer::~VulkanRenderer(){}
 
 int VulkanRenderer::init(GLFWwindow* newWindow)  {
 	window = newWindow;
@@ -23,6 +19,11 @@ int VulkanRenderer::init(GLFWwindow* newWindow)  {
 		createSwapchain();
 		createRenderPass();
 		createGraphicsPipeline();
+
+		createFramebuffers();
+		createCommandPool();
+		createCommandBuffers();
+		recordCommands();
 	}
 	catch (const std::runtime_error &e) {
 		printf("Error: %s\n", e.what());
@@ -32,10 +33,15 @@ int VulkanRenderer::init(GLFWwindow* newWindow)  {
 }
 
 void VulkanRenderer::cleanup() {
+	vkDestroyCommandPool(mainDevice.logical_device, graphics_command_pool, nullptr);
+	for (auto fb : swapchain_framebuffers) {
+		vkDestroyFramebuffer(mainDevice.logical_device, fb, nullptr);
+	}
+
 	vkDestroyPipeline(mainDevice.logical_device, graphics_pipeline, nullptr);
 	vkDestroyPipelineLayout(mainDevice.logical_device, pipeline_layout, nullptr);
 	vkDestroyRenderPass(mainDevice.logical_device, render_pass, nullptr);
-	for (auto img : sc_images) {
+	for (auto img : swapchain_images) {
 		vkDestroyImageView(mainDevice.logical_device, img.image_view, nullptr);
 	}
 	vkDestroySwapchainKHR(mainDevice.logical_device, swapchain, nullptr);
@@ -229,7 +235,7 @@ void VulkanRenderer::createSwapchain() {
 		sc_image.image = img;
 
 		sc_image.image_view = createIMageView(img, sc_img_format, VK_IMAGE_ASPECT_COLOR_BIT);
-		sc_images.push_back(sc_image);
+		swapchain_images.push_back(sc_image);
 	}
 }
 
@@ -296,6 +302,87 @@ void VulkanRenderer::createRenderPass() {
 	render_pass_info.pDependencies = subpass_deps.data();
 
 	VKRes(vkCreateRenderPass(mainDevice.logical_device, &render_pass_info, nullptr, &render_pass));
+}
+
+void VulkanRenderer::createFramebuffers() {
+	swapchain_framebuffers.resize(swapchain_images.size());
+	for (size_t i = 0; i < swapchain_framebuffers.size(); i++) {
+		std::array<VkImageView, 1> attachments = {
+			swapchain_images[i].image_view
+		};
+
+		VkFramebufferCreateInfo fb_info = {};
+		fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		fb_info.renderPass = render_pass;
+		fb_info.attachmentCount = static_cast<uint32_t>(attachments.size());
+		fb_info.pAttachments = attachments.data();
+		fb_info.width = sc_extent.width;
+		fb_info.height = sc_extent.height;
+		fb_info.layers = 1;
+
+		VKRes(vkCreateFramebuffer(mainDevice.logical_device, &fb_info, nullptr, &swapchain_framebuffers[i]));
+	}
+}
+
+void VulkanRenderer::createCommandPool() {
+	QueueFamilyIndices indices = getQueueFamilies(mainDevice.physical_device);
+
+	VkCommandPoolCreateInfo pool_info = {};
+	pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	pool_info.queueFamilyIndex = indices.graphics_family;
+
+	VKRes(vkCreateCommandPool(mainDevice.logical_device, &pool_info, nullptr, &graphics_command_pool));
+}
+
+void VulkanRenderer::createCommandBuffers() {
+	command_buffers.resize(swapchain_framebuffers.size());
+
+	VkCommandBufferAllocateInfo cb_alloc_info = {};
+	cb_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	cb_alloc_info.commandPool = graphics_command_pool;
+	cb_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+	cb_alloc_info.commandBufferCount = static_cast<uint32_t>(command_buffers.size());
+
+	// Alloc cmd buffs and place handles in array of buffers
+	VKRes(vkAllocateCommandBuffers(mainDevice.logical_device, &cb_alloc_info, command_buffers.data()));
+}
+
+void VulkanRenderer::recordCommands() {
+	VkCommandBufferBeginInfo buff_begin_info = {};
+	buff_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	buff_begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+
+	// how to being a render pass (only for graphics)
+	VkRenderPassBeginInfo rp_begin_info = {};
+	rp_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	rp_begin_info.renderPass = render_pass;
+	rp_begin_info.renderArea.offset = { 0,0 };
+	rp_begin_info.renderArea.extent = sc_extent;
+	VkClearValue clear_values[] = {
+		{0.6f, 0.65f, 0.4f, 1.0f}
+	};
+	rp_begin_info.pClearValues = clear_values;
+	rp_begin_info.clearValueCount = 1;
+
+	for (size_t i = 0; i < command_buffers.size(); i++) {
+		rp_begin_info.framebuffer = swapchain_framebuffers[i];
+
+		// Start recording commands to cmd buff
+		VKRes(vkBeginCommandBuffer(command_buffers[i], &buff_begin_info));
+
+		vkCmdBeginRenderPass(command_buffers[i], &rp_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+
+		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
+
+		vkCmdDraw(command_buffers[i], 3, 1, 0, 0);
+
+		vkCmdEndRenderPass(command_buffers[i]);
+
+		// Stop recording to cmd buff
+		VKRes(vkEndCommandBuffer(command_buffers[i]));
+	}
+
 }
 
 void VulkanRenderer::createGraphicsPipeline() {
