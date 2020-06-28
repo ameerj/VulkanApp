@@ -24,6 +24,7 @@ int VulkanRenderer::init(GLFWwindow* newWindow)  {
 		createCommandPool();
 		createCommandBuffers();
 		recordCommands();
+		createSynchronisation();
 	}
 	catch (const std::runtime_error &e) {
 		printf("Error: %s\n", e.what());
@@ -32,7 +33,58 @@ int VulkanRenderer::init(GLFWwindow* newWindow)  {
 	return 0;
 }
 
+void VulkanRenderer::draw() {
+	// 1. get next available image, signal that it's ready to draw (semaphore)
+
+	vkWaitForFences(mainDevice.logical_device, 1, &draw_fences[current_frame],
+		VK_TRUE, std::numeric_limits<uint64_t>::max());
+	vkResetFences(mainDevice.logical_device, 1, &draw_fences[current_frame]);
+
+	uint32_t img_index;
+	vkAcquireNextImageKHR(mainDevice.logical_device, swapchain, std::numeric_limits<uint64_t>::max(),
+		image_available[current_frame], VK_NULL_HANDLE, &img_index);
+
+	// 2. submit cmd buffer to queue for exec, waits for image to be signalled as available. signal when done
+	VkSubmitInfo submit_info = {};
+	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit_info.waitSemaphoreCount = 1;
+	submit_info.pWaitSemaphores = &image_available[current_frame];
+
+	VkPipelineStageFlags wait_stages[]{
+		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+	};
+
+	submit_info.pWaitDstStageMask = wait_stages;
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = &command_buffers[img_index];
+	submit_info.signalSemaphoreCount = 1;
+	submit_info.pSignalSemaphores = &render_finished[current_frame];
+	
+	VKRes(vkQueueSubmit(graphics_queue, 1, &submit_info, draw_fences[current_frame]));
+
+	// 3. present to screen
+	VkPresentInfoKHR pres_info = {};
+	pres_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	pres_info.waitSemaphoreCount = 1;
+	pres_info.pWaitSemaphores = &render_finished[current_frame];
+	pres_info.swapchainCount = 1;
+	pres_info.pSwapchains = &swapchain;
+	pres_info.pImageIndices = &img_index;
+
+	VKRes(vkQueuePresentKHR(presentation_queue, &pres_info));
+
+	current_frame = (current_frame + 1) % MAX_FRAME_DRAWS;
+}
+
+
 void VulkanRenderer::cleanup() {
+
+	vkDeviceWaitIdle(mainDevice.logical_device);
+	for (size_t i = 0; i < MAX_FRAME_DRAWS; i++) {
+		vkDestroySemaphore(mainDevice.logical_device, render_finished[i], nullptr);
+		vkDestroySemaphore(mainDevice.logical_device, image_available[i], nullptr);
+		vkDestroyFence(mainDevice.logical_device, draw_fences[i], nullptr);
+	}
 	vkDestroyCommandPool(mainDevice.logical_device, graphics_command_pool, nullptr);
 	for (auto fb : swapchain_framebuffers) {
 		vkDestroyFramebuffer(mainDevice.logical_device, fb, nullptr);
@@ -351,7 +403,7 @@ void VulkanRenderer::createCommandBuffers() {
 void VulkanRenderer::recordCommands() {
 	VkCommandBufferBeginInfo buff_begin_info = {};
 	buff_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	buff_begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+	//buff_begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;		// use before synchronization
 
 	// how to being a render pass (only for graphics)
 	VkRenderPassBeginInfo rp_begin_info = {};
@@ -383,6 +435,26 @@ void VulkanRenderer::recordCommands() {
 		VKRes(vkEndCommandBuffer(command_buffers[i]));
 	}
 
+}
+
+void VulkanRenderer::createSynchronisation() {
+
+	image_available.resize(MAX_FRAME_DRAWS);
+	render_finished.resize(MAX_FRAME_DRAWS);
+	draw_fences.resize(MAX_FRAME_DRAWS);
+
+	VkSemaphoreCreateInfo sem_info = {};
+	sem_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+	VkFenceCreateInfo fence_info = {};
+	fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+	for (size_t i = 0; i < MAX_FRAME_DRAWS; i++) {
+		VKRes(vkCreateSemaphore(mainDevice.logical_device, &sem_info, nullptr, &image_available[i]));
+		VKRes(vkCreateSemaphore(mainDevice.logical_device, &sem_info, nullptr, &render_finished[i]));
+		VKRes(vkCreateFence(mainDevice.logical_device, &fence_info, nullptr, &draw_fences[i]));
+	}
 }
 
 void VulkanRenderer::createGraphicsPipeline() {

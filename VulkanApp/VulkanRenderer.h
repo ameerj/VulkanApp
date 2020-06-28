@@ -15,6 +15,7 @@ public:
 	~VulkanRenderer();
 
 	int init(GLFWwindow* newWindow);
+	void draw();
 	void cleanup();
 
 private:
@@ -57,6 +58,14 @@ private:
 	VkFormat sc_img_format;
 	VkExtent2D sc_extent;
 	
+	int current_frame = 0;
+	// Synchronisation
+	std::vector<VkSemaphore> image_available;
+	std::vector<VkSemaphore> render_finished;
+	std::vector<VkFence> draw_fences;
+
+	// --FUNCTIONS--
+
 	// Vulkan functions
 	void getPhysicalDevice();
 
@@ -73,6 +82,7 @@ private:
 	void createCommandBuffers();
 
 	void recordCommands();
+	void createSynchronisation();
 
 	// - Support funcs
 	bool checkInstanceExtensionsSupport(std::vector<const char*>* checkExtenstions);
@@ -105,5 +115,6 @@ private:
 
 	VkImageView createIMageView(VkImage image, VkFormat format, VkImageAspectFlags flags);
 	VkShaderModule createShaderModule(const std::vector<char>& code);
+
 };
 

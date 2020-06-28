@@ -18,6 +18,8 @@ const std::vector<const char*> device_extensions = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
+const int MAX_FRAME_DRAWS = 2;
+
 // Indices of Queue families (if they exist)
 struct QueueFamilyIndices {
 	int graphics_family = -1;
