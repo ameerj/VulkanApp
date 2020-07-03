@@ -16,6 +16,18 @@ int VulkanRenderer::init(GLFWwindow* newWindow)  {
 		createSurface();
 		getPhysicalDevice();
 		createLogicalDevice();
+
+		std::vector<Vertex> mesh_verts = {
+			{{ 0.4, -0.4, 0.0},  {1.0f, 0.0f, 0.0f}},
+			{{ 0.4,  0.4, 0.0},  {0.0f, 1.0f, 0.0f}},
+			{{-0.4,  0.4, 0.0},  {0.0f, 0.0f, 1.0f}},
+							    
+			{{-0.4,  0.4, 0.0},  {0.0f, 0.0f, 1.0f}},
+			{{-0.4, -0.4, 0.0},  {0.0f, 1.0f, 0.0f}},
+			{{ 0.4, -0.4, 0.0},  {1.0f, 0.0f, 0.0f}},
+		};
+		first_mesh = Mesh(mainDevice.physical_device, mainDevice.logical_device, &mesh_verts);
+
 		createSwapchain();
 		createRenderPass();
 		createGraphicsPipeline();
@@ -80,6 +92,9 @@ void VulkanRenderer::draw() {
 void VulkanRenderer::cleanup() {
 
 	vkDeviceWaitIdle(mainDevice.logical_device);
+
+	first_mesh.destroyVertexBuffer();
+
 	for (size_t i = 0; i < MAX_FRAME_DRAWS; i++) {
 		vkDestroySemaphore(mainDevice.logical_device, render_finished[i], nullptr);
 		vkDestroySemaphore(mainDevice.logical_device, image_available[i], nullptr);
@@ -427,7 +442,11 @@ void VulkanRenderer::recordCommands() {
 
 		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
 
-		vkCmdDraw(command_buffers[i], 3, 1, 0, 0);
+		VkBuffer vertex_buffers[] = { first_mesh.getVertexBuffer() };
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, vertex_buffers, offsets);
+
+		vkCmdDraw(command_buffers[i], first_mesh.getVertexCount(), 1, 0, 0);
 
 		vkCmdEndRenderPass(command_buffers[i]);
 
@@ -480,12 +499,32 @@ void VulkanRenderer::createGraphicsPipeline() {
 
 	// create pipeline
 
+	// vertex creation
+	// data for a single vertex as a whole
+	VkVertexInputBindingDescription binding_desc = {};
+	binding_desc.binding = 0;
+	binding_desc.stride = sizeof(Vertex);
+	binding_desc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+	// how data for an attibute is defined within a vertex
+	std::array<VkVertexInputAttributeDescription, 2> attrib_descs;
+	attrib_descs[0].binding = 0;
+	attrib_descs[0].location = 0;
+	attrib_descs[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+	attrib_descs[0].offset = offsetof(Vertex, pos);
+
+	// colors
+	attrib_descs[1].binding = 0;
+	attrib_descs[1].location = 1;
+	attrib_descs[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+	attrib_descs[1].offset = offsetof(Vertex, col);
+
 	VkPipelineVertexInputStateCreateInfo vertex_in_info = {};
 	vertex_in_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertex_in_info.vertexBindingDescriptionCount = 0;
-	vertex_in_info.pVertexBindingDescriptions = nullptr;		//(binding desc (data spacing/stride, etc.)
-	vertex_in_info.vertexAttributeDescriptionCount = 0;
-	vertex_in_info.pVertexAttributeDescriptions = nullptr;		// data format, where to bind to/from
+	vertex_in_info.vertexBindingDescriptionCount = 1;
+	vertex_in_info.pVertexBindingDescriptions = &binding_desc;		//(binding desc (data spacing/stride, etc.)
+	vertex_in_info.vertexAttributeDescriptionCount = static_cast<uint32_t>(attrib_descs.size());
+	vertex_in_info.pVertexAttributeDescriptions = attrib_descs.data();		// data format, where to bind to/from
 
 
 	VkPipelineInputAssemblyStateCreateInfo input_assembly = {};

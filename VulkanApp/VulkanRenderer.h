@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <string>
 #include "Utilities.h"
+#include "Mesh.h"
+
 
 class VulkanRenderer {
 public:
@@ -116,5 +118,7 @@ private:
 	VkImageView createIMageView(VkImage image, VkFormat format, VkImageAspectFlags flags);
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
+	// Scene objects
+	Mesh first_mesh;
 };
 

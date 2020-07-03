@@ -1,6 +1,8 @@
 #pragma once
 
 #include <fstream>
+#include <iostream>
+#include <glm/glm.hpp>
 
 static bool VKCheckError(VkResult res, const char* file, int line) {
 	if (res != VK_SUCCESS) {
@@ -11,6 +13,11 @@ static bool VKCheckError(VkResult res, const char* file, int line) {
 	return true;
 }
 
+using u8 = std::uint8_t;
+using u16 = std::uint16_t;
+using u32 = std::uint32_t;
+using u64 = std::uint64_t;
+
 #define ASSERT(x) if (!(x)) __debugbreak();
 #define VKRes(x)  ASSERT(VKCheckError(x, __FILE__, __LINE__))
 
@@ -19,6 +26,11 @@ const std::vector<const char*> device_extensions = {
 };
 
 const int MAX_FRAME_DRAWS = 2;
+
+struct Vertex {
+	glm::vec3 pos;	//position xyz
+	glm::vec3 col;	//color rgb
+};
 
 // Indices of Queue families (if they exist)
 struct QueueFamilyIndices {
