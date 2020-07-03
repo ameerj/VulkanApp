@@ -119,6 +119,6 @@ private:
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
 	// Scene objects
-	Mesh first_mesh;
+	std::vector<Mesh> meshes;
 };
 

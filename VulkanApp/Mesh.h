@@ -9,22 +9,32 @@ class Mesh
 {
 public:
 	Mesh();
-	Mesh(VkPhysicalDevice physical_device, VkDevice device, std::vector<Vertex>* vertices);
+	Mesh(VkPhysicalDevice physical_device, VkDevice device, 
+		VkQueue transfer_queue, VkCommandPool transfer_cmd_pool,
+		std::vector<Vertex>* vertices,
+		std::vector<u32>* indices);
 
 	int getVertexCount();
 	VkBuffer getVertexBuffer();
-	void destroyVertexBuffer();
+
+	int getIndexCount();
+	VkBuffer getIndexBuffer();
+	void destroyBuffers();
 	~Mesh();
 private:
 	int vertex_count;
 	VkBuffer vertex_buffer;
 	VkDeviceMemory vertex_buffer_memory;
 
+	int index_count;
+	VkBuffer index_buffer;
+	VkDeviceMemory index_buffer_memory;
+
 	VkPhysicalDevice physical_device;
 	VkDevice device;
 
-	void createVertexBuffer(std::vector<Vertex>* vertices);
+	void createVertexBuffer(VkQueue transfer_queue, VkCommandPool transfer_cmd_pool, std::vector<Vertex>* vertices);
+	void createIndexBuffer(VkQueue transfer_queue, VkCommandPool transfer_cmd_pool, std::vector<u32>* indices);
 
-	uint32_t findMemoryTypeIndex(uint32_t allowed_types, VkMemoryPropertyFlags properties);
 };
 

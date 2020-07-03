@@ -4,6 +4,9 @@
 #include <iostream>
 #include <glm/glm.hpp>
 
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+
 static bool VKCheckError(VkResult res, const char* file, int line) {
 	if (res != VK_SUCCESS) {
 		std::cout << "[Vulkan Error] (" << res << "): " <<
@@ -67,4 +70,78 @@ static std::vector<char> readFile(const std::string& filename) {
 
 	file.close();
 	return file_buffer;
+}
+
+static uint32_t findMemoryTypeIndex(VkPhysicalDevice physcial_device, uint32_t allowed_types, VkMemoryPropertyFlags properties) {
+	VkPhysicalDeviceMemoryProperties memprops;
+	vkGetPhysicalDeviceMemoryProperties(physcial_device, &memprops);
+
+	for (u32 i = 0; i < memprops.memoryTypeCount; i++) {
+		if ((allowed_types & (1 << i))
+			&& (memprops.memoryTypes[i].propertyFlags & properties) == properties) {
+			return i;
+		}
+	}
+}
+
+static void createBuffer(VkPhysicalDevice physcial_device, VkDevice device, VkDeviceSize buffer_size,
+	VkBufferUsageFlags buffer_usage, VkMemoryPropertyFlags properties, VkBuffer* buffer, VkDeviceMemory* buffermem) {
+	VkBufferCreateInfo buffer_info = {};
+	buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	buffer_info.size = buffer_size;
+	buffer_info.usage = buffer_usage;
+	buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	VKRes(vkCreateBuffer(device, &buffer_info, nullptr, buffer));
+
+	// Get buffer memory reqs
+	VkMemoryRequirements memreqs;
+	vkGetBufferMemoryRequirements(device, *buffer, &memreqs);
+
+	VkMemoryAllocateInfo memalloc_info = {};
+	memalloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	memalloc_info.allocationSize = memreqs.size;
+	memalloc_info.memoryTypeIndex = findMemoryTypeIndex(physcial_device, memreqs.memoryTypeBits, properties);
+
+	VKRes(vkAllocateMemory(device, &memalloc_info, nullptr, buffermem));
+
+	vkBindBufferMemory(device, *buffer, *buffermem, 0);
+
+}
+
+static void copyBuffer(VkDevice device, VkQueue transfer_queue, 
+	VkCommandPool transfer_cmd_pool, VkBuffer src, VkBuffer dst, VkDeviceSize buffer_size) {
+	VkCommandBuffer transfer_cmd_buffer;
+
+	VkCommandBufferAllocateInfo alloc_info = {};
+	alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	alloc_info.commandPool = transfer_cmd_pool;
+	alloc_info.commandBufferCount = 1;
+
+	vkAllocateCommandBuffers(device, &alloc_info, &transfer_cmd_buffer);
+
+	VkCommandBufferBeginInfo begin_info = {};
+	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(transfer_cmd_buffer, &begin_info);
+
+	VkBufferCopy buffer_copy_region = {};
+	buffer_copy_region.srcOffset = 0;
+	buffer_copy_region.dstOffset = 0;
+	buffer_copy_region.size = buffer_size;
+
+	vkCmdCopyBuffer(transfer_cmd_buffer, src, dst, 1, &buffer_copy_region);
+	vkEndCommandBuffer(transfer_cmd_buffer);
+
+	VkSubmitInfo submit_info = {};
+	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = &transfer_cmd_buffer;
+
+	vkQueueSubmit(transfer_queue, 1, &submit_info, VK_NULL_HANDLE);
+	vkQueueWaitIdle(transfer_queue);
+
+	vkFreeCommandBuffers(device, transfer_cmd_pool, 1, &transfer_cmd_buffer);
 }
