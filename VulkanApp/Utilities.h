@@ -29,6 +29,7 @@ const std::vector<const char*> device_extensions = {
 };
 
 const int MAX_FRAME_DRAWS = 2;
+const int MAX_OBJECTS = 2;
 
 struct Vertex {
 	glm::vec3 pos;	//position xyz

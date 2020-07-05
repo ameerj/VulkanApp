@@ -22,7 +22,7 @@ public:
 
 	int init(GLFWwindow* newWindow);
 
-	void updateModel(glm::mat4 new_model);
+	void updateModel(int id, glm::mat4 new_model);
 
 	void draw();
 	void cleanup();
@@ -67,6 +67,9 @@ private:
 	VkFormat sc_img_format;
 	VkExtent2D sc_extent;
 	
+	VkDeviceSize min_uniform_buff_offset;
+	size_t model_uniform_alignment;
+
 	int current_frame = 0;
 	// Synchronisation
 	std::vector<VkSemaphore> image_available;
@@ -94,6 +97,7 @@ private:
 	void createUniformBuffers();
 	void createDescriptorPool();
 	void createDescriptorSets();
+	void allocateDynamicBufferTransferSpace();
 
 	void updateUniformBuffers(u32 img_idx);
 
@@ -136,18 +140,22 @@ private:
 	std::vector<Mesh> meshes;
 
 	// Scene settings
-	struct MVP {
+	struct UboViewProjection {
 		glm::mat4 projection;
 		glm::mat4 view;
-		glm::mat4 model;
-	} mvp;
+	} ubo_view_proj;
 
 	// Descriptors
 	VkDescriptorSetLayout descriptor_set_layout;
 	VkDescriptorPool descriptor_pool;
 	std::vector<VkDescriptorSet> descriptor_sets;
 
-	std::vector<VkBuffer> uniform_buffer;
-	std::vector<VkDeviceMemory> uniform_buffer_memory;
+	std::vector<VkBuffer> vp_uniform_buffer;
+	std::vector<VkDeviceMemory> vp_uniform_buffer_memory;
+
+	std::vector<VkBuffer> model_uniform_buffer;
+	std::vector<VkDeviceMemory> model_uniform_buffer_memory;
+
+	UboModel* model_transfer_space;
 };
 

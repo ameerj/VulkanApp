@@ -13,6 +13,8 @@ Mesh::Mesh(VkPhysicalDevice new_physical_device, VkDevice new_device,
 	device = new_device;
 	createVertexBuffer(transfer_queue, transfer_cmd_pool, vertices);
 	createIndexBuffer(transfer_queue, transfer_cmd_pool, indices);
+
+	model.model = glm::mat4(1.0f);
 }
 
 int Mesh::getVertexCount()
@@ -40,6 +42,10 @@ void Mesh::destroyBuffers() {
 	vkFreeMemory(device, vertex_buffer_memory, nullptr);
 	vkDestroyBuffer(device, index_buffer, nullptr);
 	vkFreeMemory(device, index_buffer_memory, nullptr);
+}
+
+void Mesh::setModel(glm::mat4 new_model) {
+	model.model = new_model;
 }
 
 Mesh::~Mesh()
