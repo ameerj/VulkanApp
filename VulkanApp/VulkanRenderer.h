@@ -3,6 +3,10 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/glm.hpp>
+
+
 #include <vector>
 #include <set>
 #include <algorithm>
@@ -17,6 +21,9 @@ public:
 	~VulkanRenderer();
 
 	int init(GLFWwindow* newWindow);
+
+	void updateModel(glm::mat4 new_model);
+
 	void draw();
 	void cleanup();
 
@@ -83,6 +90,13 @@ private:
 	void createCommandPool();
 	void createCommandBuffers();
 
+	void createDescriptorSetLayout();
+	void createUniformBuffers();
+	void createDescriptorPool();
+	void createDescriptorSets();
+
+	void updateUniformBuffers(u32 img_idx);
+
 	void recordCommands();
 	void createSynchronisation();
 
@@ -120,5 +134,20 @@ private:
 
 	// Scene objects
 	std::vector<Mesh> meshes;
+
+	// Scene settings
+	struct MVP {
+		glm::mat4 projection;
+		glm::mat4 view;
+		glm::mat4 model;
+	} mvp;
+
+	// Descriptors
+	VkDescriptorSetLayout descriptor_set_layout;
+	VkDescriptorPool descriptor_pool;
+	std::vector<VkDescriptorSet> descriptor_sets;
+
+	std::vector<VkBuffer> uniform_buffer;
+	std::vector<VkDeviceMemory> uniform_buffer_memory;
 };
 
