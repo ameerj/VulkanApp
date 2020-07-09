@@ -67,8 +67,8 @@ private:
 	VkFormat sc_img_format;
 	VkExtent2D sc_extent;
 	
-	VkDeviceSize min_uniform_buff_offset;
-	size_t model_uniform_alignment;
+	// VkDeviceSize min_uniform_buff_offset;
+	// size_t model_uniform_alignment;
 
 	int current_frame = 0;
 	// Synchronisation
@@ -99,9 +99,11 @@ private:
 	void createDescriptorSets();
 	void allocateDynamicBufferTransferSpace();
 
+	void createPushConstantRange();
+
 	void updateUniformBuffers(u32 img_idx);
 
-	void recordCommands();
+	void recordCommands(u32 curr_img);
 	void createSynchronisation();
 
 	// - Support funcs
@@ -156,6 +158,8 @@ private:
 	std::vector<VkBuffer> model_uniform_buffer;
 	std::vector<VkDeviceMemory> model_uniform_buffer_memory;
 
-	UboModel* model_transfer_space;
+	Model* model_transfer_space;
+
+	VkPushConstantRange push_constant_range;
 };
 
