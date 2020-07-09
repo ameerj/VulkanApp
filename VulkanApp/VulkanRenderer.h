@@ -3,163 +3,171 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include <glm/gtc/matrix_transform.hpp>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
-
-#include <vector>
-#include <set>
 #include <algorithm>
+#include <set>
 #include <string>
-#include "Utilities.h"
+#include <vector>
 #include "Mesh.h"
-
+#include "Utilities.h"
 
 class VulkanRenderer {
 public:
-	VulkanRenderer();
-	~VulkanRenderer();
+    VulkanRenderer();
+    ~VulkanRenderer();
 
-	int init(GLFWwindow* newWindow);
+    int init(GLFWwindow* newWindow);
 
-	void updateModel(int id, glm::mat4 new_model);
+    void updateModel(int id, glm::mat4 new_model);
 
-	void draw();
-	void cleanup();
+    void draw();
+    void cleanup();
 
 private:
-	GLFWwindow* window;
+    GLFWwindow* window;
 
-	VkInstance instance;
-	struct {
-		VkPhysicalDevice physical_device;
-		VkDevice logical_device;
-	} mainDevice;
-	VkQueue graphics_queue;
-	VkQueue presentation_queue;
-	VkSurfaceKHR surface;
-	VkSwapchainKHR swapchain;
+    VkInstance instance;
+    struct {
+        VkPhysicalDevice physical_device;
+        VkDevice logical_device;
+    } mainDevice;
+    VkQueue graphics_queue;
+    VkQueue presentation_queue;
+    VkSurfaceKHR surface;
+    VkSwapchainKHR swapchain;
 
-	std::vector<SwapchainImage> swapchain_images;
-	std::vector<VkFramebuffer> swapchain_framebuffers;
-	std::vector<VkCommandBuffer> command_buffers;
+    std::vector<SwapchainImage> swapchain_images;
+    std::vector<VkFramebuffer> swapchain_framebuffers;
+    std::vector<VkCommandBuffer> command_buffers;
 
-	// - Pipeline
-	VkPipeline graphics_pipeline;
-	VkPipelineLayout pipeline_layout;
-	VkRenderPass render_pass;
+    VkImage depth_image;
+    VkImageView depth_image_view;
+    VkDeviceMemory depth_image_memory;
+    VkFormat depth_fmt;
 
-	// - Pools
-	VkCommandPool graphics_command_pool;
+    // - Pipeline
+    VkPipeline graphics_pipeline;
+    VkPipelineLayout pipeline_layout;
+    VkRenderPass render_pass;
 
-	// Validation
-	VkDebugUtilsMessengerEXT debugMessenger;
-	const std::vector<const char*> validationLayers = {
-		"VK_LAYER_KHRONOS_validation"
-	};
+    // - Pools
+    VkCommandPool graphics_command_pool;
+
+    // Validation
+    VkDebugUtilsMessengerEXT debugMessenger;
+    const std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_validation"};
 #ifdef NDEBUG
-	const bool enableValidationLayers = false;
+    const bool enableValidationLayers = false;
 #else
-	const bool enableValidationLayers = true;
+    const bool enableValidationLayers = true;
 #endif
 
-	// Utility
-	VkFormat sc_img_format;
-	VkExtent2D sc_extent;
-	
-	// VkDeviceSize min_uniform_buff_offset;
-	// size_t model_uniform_alignment;
+    // Utility
+    VkFormat sc_img_format;
+    VkExtent2D sc_extent;
 
-	int current_frame = 0;
-	// Synchronisation
-	std::vector<VkSemaphore> image_available;
-	std::vector<VkSemaphore> render_finished;
-	std::vector<VkFence> draw_fences;
+    // VkDeviceSize min_uniform_buff_offset;
+    // size_t model_uniform_alignment;
 
-	// --FUNCTIONS--
+    int current_frame = 0;
+    // Synchronisation
+    std::vector<VkSemaphore> image_available;
+    std::vector<VkSemaphore> render_finished;
+    std::vector<VkFence> draw_fences;
 
-	// Vulkan functions
-	void getPhysicalDevice();
+    // --FUNCTIONS--
 
-	// - Create funcs
-	void createInstance();
-	void createLogicalDevice();
-	void createDebugMessenger();
-	void createSurface();
-	void createSwapchain();
-	void createGraphicsPipeline();
-	void createRenderPass();
-	void createFramebuffers();
-	void createCommandPool();
-	void createCommandBuffers();
+    // Vulkan functions
+    void getPhysicalDevice();
 
-	void createDescriptorSetLayout();
-	void createUniformBuffers();
-	void createDescriptorPool();
-	void createDescriptorSets();
-	void allocateDynamicBufferTransferSpace();
+    // - Create funcs
+    void createInstance();
+    void createLogicalDevice();
+    void createDebugMessenger();
+    void createSurface();
+    void createSwapchain();
+    void createGraphicsPipeline();
+    void createRenderPass();
+    void createDepthBufferImage();
+    void createFramebuffers();
+    void createCommandPool();
+    void createCommandBuffers();
 
-	void createPushConstantRange();
+    void createDescriptorSetLayout();
+    void createUniformBuffers();
+    void createDescriptorPool();
+    void createDescriptorSets();
+    void allocateDynamicBufferTransferSpace();
 
-	void updateUniformBuffers(u32 img_idx);
+    void createPushConstantRange();
 
-	void recordCommands(u32 curr_img);
-	void createSynchronisation();
+    void updateUniformBuffers(u32 img_idx);
 
-	// - Support funcs
-	bool checkInstanceExtensionsSupport(std::vector<const char*>* checkExtenstions);
-	bool checkDeviceInstanceExtensionsSupport(VkPhysicalDevice device);
-	bool checkDeviceSuitable(VkPhysicalDevice device);
-	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
+    void recordCommands(u32 curr_img);
+    void createSynchronisation();
 
-	static VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, 
-		const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
-	
-	
-	QueueFamilyIndices getQueueFamilies(VkPhysicalDevice device);
-	SwapchainDetails getSwapchainDetails(VkPhysicalDevice device);
+    // - Support funcs
+    bool checkInstanceExtensionsSupport(std::vector<const char*>* checkExtenstions);
+    bool checkDeviceInstanceExtensionsSupport(VkPhysicalDevice device);
+    bool checkDeviceSuitable(VkPhysicalDevice device);
+    void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
 
-	VkSurfaceFormatKHR chooseBestFormat(const std::vector<VkSurfaceFormatKHR>& formats);
-	VkPresentModeKHR chooseBestPresMode(const std::vector<VkPresentModeKHR>& modes);
-	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+    static VkResult CreateDebugUtilsMessengerEXT(
+        VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+        const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 
-	bool checkValidationLayerSupport();
-	std::vector<const char*> getRequiredExtensions();
+    QueueFamilyIndices getQueueFamilies(VkPhysicalDevice device);
+    SwapchainDetails getSwapchainDetails(VkPhysicalDevice device);
 
-	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-		VkDebugUtilsMessageTypeFlagsEXT messageType,
-		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-		void* pUserData);
+    VkSurfaceFormatKHR chooseBestFormat(const std::vector<VkSurfaceFormatKHR>& formats);
+    VkPresentModeKHR chooseBestPresMode(const std::vector<VkPresentModeKHR>& modes);
+    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+    VkFormat chooseSupportedFormat(const std::vector<VkFormat>& formats, VkImageTiling tiling,
+                                   VkFormatFeatureFlags flags);
 
-	static void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
+    bool checkValidationLayerSupport();
+    std::vector<const char*> getRequiredExtensions();
 
+    static VKAPI_ATTR VkBool32 VKAPI_CALL
+    debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+                  VkDebugUtilsMessageTypeFlagsEXT messageType,
+                  const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
 
-	VkImageView createIMageView(VkImage image, VkFormat format, VkImageAspectFlags flags);
-	VkShaderModule createShaderModule(const std::vector<char>& code);
+    static void DestroyDebugUtilsMessengerEXT(VkInstance instance,
+                                              VkDebugUtilsMessengerEXT debugMessenger,
+                                              const VkAllocationCallbacks* pAllocator);
 
-	// Scene objects
-	std::vector<Mesh> meshes;
+    VkImage createImage(u32 width, u32 height, VkFormat format, VkImageTiling tiling,
+                        VkImageUsageFlags flags, VkMemoryPropertyFlags propflags,
+                        VkDeviceMemory* imagemem);
 
-	// Scene settings
-	struct UboViewProjection {
-		glm::mat4 projection;
-		glm::mat4 view;
-	} ubo_view_proj;
+    VkImageView createIMageView(VkImage image, VkFormat format, VkImageAspectFlags flags);
 
-	// Descriptors
-	VkDescriptorSetLayout descriptor_set_layout;
-	VkDescriptorPool descriptor_pool;
-	std::vector<VkDescriptorSet> descriptor_sets;
+    VkShaderModule createShaderModule(const std::vector<char>& code);
 
-	std::vector<VkBuffer> vp_uniform_buffer;
-	std::vector<VkDeviceMemory> vp_uniform_buffer_memory;
+    // Scene objects
+    std::vector<Mesh> meshes;
 
-	std::vector<VkBuffer> model_uniform_buffer;
-	std::vector<VkDeviceMemory> model_uniform_buffer_memory;
+    // Scene settings
+    struct UboViewProjection {
+        glm::mat4 projection;
+        glm::mat4 view;
+    } ubo_view_proj;
 
-	Model* model_transfer_space;
+    // Descriptors
+    VkDescriptorSetLayout descriptor_set_layout;
+    VkDescriptorPool descriptor_pool;
+    std::vector<VkDescriptorSet> descriptor_sets;
 
-	VkPushConstantRange push_constant_range;
+    std::vector<VkBuffer> vp_uniform_buffer;
+    std::vector<VkDeviceMemory> vp_uniform_buffer_memory;
+
+    std::vector<VkBuffer> model_uniform_buffer;
+    std::vector<VkDeviceMemory> model_uniform_buffer_memory;
+
+    Model* model_transfer_space;
+
+    VkPushConstantRange push_constant_range;
 };
-

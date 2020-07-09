@@ -16,59 +16,62 @@ GLFWwindow* window;
 VulkanRenderer vk_renderer;
 
 void initWindow(std::string wName = "Test Window", const int width = 800, const int height = 600) {
-	// initialize glfw
-	glfwInit();
+    // initialize glfw
+    glfwInit();
 
-	// glfw to not work with opengl
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    // glfw to not work with opengl
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-	window = glfwCreateWindow(width, height, wName.c_str(), nullptr, nullptr);
+    window = glfwCreateWindow(width, height, wName.c_str(), nullptr, nullptr);
 }
 
 int main() {
 
-	//create window
-	initWindow();
-	if (vk_renderer.init(window) == EXIT_FAILURE) {
-		return EXIT_FAILURE;
-	}
+    // create window
+    initWindow();
+    if (vk_renderer.init(window) == EXIT_FAILURE) {
+        return EXIT_FAILURE;
+    }
 
-	float angle = 0.0f;
-	float delta_time = 0.0f;
-	float last_time = 0.0f;
+    float angle = 0.0f;
+    float delta_time = 0.0f;
+    float last_time = 0.0f;
 
-	while (!glfwWindowShouldClose(window)) {
-		glfwPollEvents();
+    while (!glfwWindowShouldClose(window)) {
+        glfwPollEvents();
 
-		float now = glfwGetTime();
-		delta_time = now - last_time;
-		last_time = now;
+        float now = glfwGetTime();
+        delta_time = now - last_time;
+        last_time = now;
 
-		angle += 10.0f * delta_time;
-		if (angle > 360.0f) angle -= 360.0f;
+        angle += 10.0f * delta_time;
+        if (angle > 360.0f)
+            angle -= 360.0f;
 
-		glm::mat4 first_model(1.0f);
-		glm::mat4 second_model(1.0f);
+        glm::mat4 first_model(1.0f);
+        glm::mat4 second_model(1.0f);
 
-		first_model = glm::translate(first_model, glm::vec3(-2.0f, 0.0f, -5.0f));
-		first_model = glm::rotate(first_model, glm::radians(angle), glm::vec3(0.0f, 0.0f, 1.0f));
+        first_model = glm::translate(first_model, glm::vec3(0.0f, 0.0f, -2.50f));
+        first_model = glm::rotate(first_model, glm::radians(angle), glm::vec3(0.0f, 0.0f, 1.0f));
 
-		second_model = glm::translate(second_model, glm::vec3(2.0f, 0.0f, -3.0f));
-		second_model = glm::rotate(second_model, glm::radians(-angle*50), glm::vec3(0.0f, 0.0f, 1.0f));
+        second_model = glm::translate(second_model, glm::vec3(0.0f, 0.0f, -3.0f));
+        second_model =
+            glm::rotate(second_model, glm::radians(-angle * 50), glm::vec3(0.0f, 0.0f, 1.0f));
 
-		vk_renderer.updateModel(0, first_model);
-		vk_renderer.updateModel(1, second_model);
+        vk_renderer.updateModel(0, first_model);
+        vk_renderer.updateModel(1, second_model);
 
-		//vk_renderer.updateModel(glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f)));
+        // vk_renderer.updateModel(glm::rotate(glm::mat4(1.0f), glm::radians(angle),
+        // glm::vec3(0.0f, 1.0f, 0.0f)));
 
-		vk_renderer.draw();
-	}
+        vk_renderer.draw();
+    }
 
-	vk_renderer.cleanup();
+    vk_renderer.cleanup();
 
-	glfwDestroyWindow(window);
-	glfwTerminate();
+    glfwDestroyWindow(window);
+    glfwTerminate();
 
-	return 0;
+    return 0;
 }
