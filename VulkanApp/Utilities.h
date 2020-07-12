@@ -28,12 +28,17 @@ using u64 = std::uint64_t;
 const std::vector<const char*> device_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
 const int MAX_FRAME_DRAWS = 2;
-const int MAX_OBJECTS = 2;
+const int MAX_OBJECTS = 500;
 
 struct Vertex {
     glm::vec3 pos; // position xyz
     glm::vec3 col; // color rgb
     glm::vec2 tex; // texture coords uv
+};
+
+typedef struct VkDev {
+    VkPhysicalDevice physical_device;
+    VkDevice logical_device;
 };
 
 // Indices of Queue families (if they exist)

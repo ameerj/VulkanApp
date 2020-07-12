@@ -10,7 +10,11 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
 #include "Mesh.h"
+#include "MeshModel.h"
 #include "Utilities.h"
 #include "stb_image.h"
 
@@ -25,15 +29,13 @@ public:
 
     void draw();
     void cleanup();
+    void createMeshModel(std::string filename);
 
 private:
     GLFWwindow* window;
 
     VkInstance instance;
-    struct {
-        VkPhysicalDevice physical_device;
-        VkDevice logical_device;
-    } mainDevice;
+    VkDev mainDevice;
     VkQueue graphics_queue;
     VkQueue presentation_queue;
     VkSurfaceKHR surface;
@@ -186,4 +188,7 @@ private:
     int createTextureImage(std::string filename);
     int createTexture(std::string filename);
     int createTextureDescriptor(VkImageView teximg);
+
+    // Assets
+    std::vector<MeshModel> models;
 };

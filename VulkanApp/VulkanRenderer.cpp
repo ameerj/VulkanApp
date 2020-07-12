@@ -38,35 +38,11 @@ int VulkanRenderer::init(GLFWwindow* newWindow) {
         ubo_view_proj.projection = glm::perspective(
             glm::radians(45.0f), (float)sc_extent.width / (float)sc_extent.height, 0.1f, 100.0f);
         ubo_view_proj.view =
-            glm::lookAt(glm::vec3(1.0f, 1.0f, 3.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+            glm::lookAt(glm::vec3(1.0f, 1.0f, 15.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
         ubo_view_proj.projection[1][1] *= -1;
 
-        std::vector<Vertex> mesh_verts = {
-            {{0.0, -0.4, 0.0}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}},
-            {{0.0, 0.4, 0.0}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-            {{-0.8, 0.4, 0.0}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
-            {{-0.8, -0.4, 0.0}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
-        };
-        std::vector<Vertex> mesh_verts2 = {
-            {{0.9, -0.4, 0.0}, {0.5f, 0.0f, 0.0f}, {1.0f, 1.0f}},
-            {{0.9, 0.4, 0.0}, {0.4f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-            {{0.1, 0.4, 0.0}, {0.3f, 0.2f, 0.8f}, {0.0f, 0.0f}},
-            {{0.1, -0.4, 0.0}, {0.6f, 0.2f, 0.1f}, {0.0f, 1.0f}},
-        };
-        // index data
-        std::vector<u32> mesh_indices = {
-            0, 1, 2, 2, 3, 0,
-        };
-
-        Mesh first_mesh =
-            Mesh(mainDevice.physical_device, mainDevice.logical_device, graphics_queue,
-                 graphics_command_pool, &mesh_verts, &mesh_indices, createTexture("giraffe.jpg"));
-        Mesh second_mesh =
-            Mesh(mainDevice.physical_device, mainDevice.logical_device, graphics_queue,
-                 graphics_command_pool, &mesh_verts2, &mesh_indices, createTexture("giraffe.jpg"));
-        meshes.push_back(first_mesh);
-        meshes.push_back(second_mesh);
+        createTexture("plain.png"); // default missing texture
 
     } catch (const std::runtime_error& e) {
         printf("Error: %s\n", e.what());
@@ -77,9 +53,9 @@ int VulkanRenderer::init(GLFWwindow* newWindow) {
 
 void VulkanRenderer::updateModel(int id, glm::mat4 new_model) {
     // ubo_view_proj.model = new_model;
-    if (id > meshes.size())
+    if (id > models.size())
         return;
-    meshes[id].setModel(new_model);
+    models[id].setModel(new_model);
 }
 
 void VulkanRenderer::draw() {
@@ -132,6 +108,10 @@ void VulkanRenderer::draw() {
 void VulkanRenderer::cleanup() {
 
     vkDeviceWaitIdle(mainDevice.logical_device);
+
+    for (size_t i = 0; i < models.size(); i++) {
+        models[i].destroyMeshModel();
+    }
 
     //_aligned_free(model_transfer_space);
     vkDestroyDescriptorPool(mainDevice.logical_device, sampler_descriptor_pool, nullptr);
@@ -752,28 +732,35 @@ void VulkanRenderer::recordCommands(u32 curr_img) {
     vkCmdBindPipeline(command_buffers[curr_img], VK_PIPELINE_BIND_POINT_GRAPHICS,
                       graphics_pipeline);
 
-    for (size_t j = 0; j < meshes.size(); j++) {
-        VkBuffer vertex_buffers[] = {meshes[j].getVertexBuffer()};
-        VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(command_buffers[curr_img], 0, 1, vertex_buffers, offsets);
-
-        vkCmdBindIndexBuffer(command_buffers[curr_img], meshes[j].getIndexBuffer(), 0,
-                             VK_INDEX_TYPE_UINT32);
-
-        // u32 dynamic_offset = static_cast<u32>(model_uniform_alignment) * j;
+    for (size_t j = 0; j < models.size(); j++) {
+        MeshModel curr_model = models[j];
 
         vkCmdPushConstants(command_buffers[curr_img], pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT,
-                           0, sizeof(Model), &meshes[j].getModel());
+                           0, sizeof(Model), &curr_model.getModel());
 
-        std::array<VkDescriptorSet, 2> sets = {descriptor_sets[curr_img],
-                                               sampler_descriptor_sets[meshes[j].getTexId()]};
+        for (size_t k = 0; k < curr_model.getMeshCount(); k++) {
 
-        vkCmdBindDescriptorSets(command_buffers[curr_img], VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                pipeline_layout, 0, static_cast<u32>(sets.size()), sets.data(), 0,
-                                nullptr);
+            VkBuffer vertex_buffers[] = {curr_model.getMesh(k)->getVertexBuffer()};
+            VkDeviceSize offsets[] = {0};
+            vkCmdBindVertexBuffers(command_buffers[curr_img], 0, 1, vertex_buffers, offsets);
 
-        // vkCmdDraw(command_buffers[i], first_mesh.getVertexCount(), 1, 0, 0);
-        vkCmdDrawIndexed(command_buffers[curr_img], meshes[j].getIndexCount(), 1, 0, 0, 0);
+            vkCmdBindIndexBuffer(command_buffers[curr_img], curr_model.getMesh(k)->getIndexBuffer(),
+                                 0, VK_INDEX_TYPE_UINT32);
+
+            // u32 dynamic_offset = static_cast<u32>(model_uniform_alignment) * j;
+
+            std::array<VkDescriptorSet, 2> sets = {
+                descriptor_sets[curr_img],
+                sampler_descriptor_sets[curr_model.getMesh(k)->getTexId()]};
+
+            vkCmdBindDescriptorSets(command_buffers[curr_img], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    pipeline_layout, 0, static_cast<u32>(sets.size()), sets.data(),
+                                    0, nullptr);
+
+            // vkCmdDraw(command_buffers[i], first_mesh.getVertexCount(), 1, 0, 0);
+            vkCmdDrawIndexed(command_buffers[curr_img], curr_model.getMesh(k)->getIndexCount(), 1,
+                             0, 0, 0);
+        }
     }
     vkCmdEndRenderPass(command_buffers[curr_img]);
 
@@ -1479,6 +1466,33 @@ int VulkanRenderer::createTextureDescriptor(VkImageView teximg) {
     sampler_descriptor_sets.push_back(descset);
 
     return sampler_descriptor_sets.size() - 1;
+}
+
+void VulkanRenderer::createMeshModel(std::string filename) {
+    Assimp::Importer importer;
+    const aiScene* scene = importer.ReadFile(filename, aiProcess_Triangulate | aiProcess_FlipUVs |
+                                                           aiProcess_JoinIdenticalVertices);
+    if (!scene) {
+        throw std::runtime_error("Filed to load model " + filename);
+    }
+
+    std::vector<std::string> texture_names = MeshModel::LoadMaterials(scene);
+
+    std::vector<int> mat_to_tex(texture_names.size()); // associate mtl id to desc set id
+
+    for (size_t i = 0; i < texture_names.size(); i++) {
+        if (texture_names[i].empty()) {
+            mat_to_tex[i] = 0;
+        } else {
+            mat_to_tex[i] = createTexture(texture_names[i]);
+        }
+    }
+
+    std::vector<Mesh> model_meshes = MeshModel::LoadNode(
+        mainDevice, graphics_queue, graphics_command_pool, scene->mRootNode, scene, mat_to_tex);
+    MeshModel model = MeshModel(model_meshes);
+
+    models.push_back(model);
 }
 
 void VulkanRenderer::allocateDynamicBufferTransferSpace() {
