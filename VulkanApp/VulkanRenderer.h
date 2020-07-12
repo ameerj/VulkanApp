@@ -12,6 +12,7 @@
 #include <vector>
 #include "Mesh.h"
 #include "Utilities.h"
+#include "stb_image.h"
 
 class VulkanRenderer {
 public:
@@ -46,6 +47,11 @@ private:
     VkImageView depth_image_view;
     VkDeviceMemory depth_image_memory;
     VkFormat depth_fmt;
+
+    VkSampler texture_sampler;
+    std::vector<VkImage> texture_images;
+    std::vector<VkDeviceMemory> texture_image_memory;
+    std::vector<VkImageView> texture_image_views;
 
     // - Pipeline
     VkPipeline graphics_pipeline;
@@ -107,6 +113,7 @@ private:
 
     void recordCommands(u32 curr_img);
     void createSynchronisation();
+    void createTextureSampler();
 
     // - Support funcs
     bool checkInstanceExtensionsSupport(std::vector<const char*>* checkExtenstions);
@@ -158,8 +165,11 @@ private:
 
     // Descriptors
     VkDescriptorSetLayout descriptor_set_layout;
+    VkDescriptorSetLayout sampler_set_layout;
     VkDescriptorPool descriptor_pool;
+    VkDescriptorPool sampler_descriptor_pool;
     std::vector<VkDescriptorSet> descriptor_sets;
+    std::vector<VkDescriptorSet> sampler_descriptor_sets;
 
     std::vector<VkBuffer> vp_uniform_buffer;
     std::vector<VkDeviceMemory> vp_uniform_buffer_memory;
@@ -170,4 +180,10 @@ private:
     Model* model_transfer_space;
 
     VkPushConstantRange push_constant_range;
+
+    // loader funcs
+    stbi_uc* loadTextureFile(std::string filename, int* width, int* height, VkDeviceSize* imgsize);
+    int createTextureImage(std::string filename);
+    int createTexture(std::string filename);
+    int createTextureDescriptor(VkImageView teximg);
 };
