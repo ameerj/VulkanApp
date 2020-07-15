@@ -16,7 +16,8 @@
 GLFWwindow* window;
 VulkanRenderer vk_renderer;
 
-void initWindow(std::string wName = "Test Window", const int width = 800, const int height = 600) {
+void initWindow(std::string wName = "Test Window", const int width = 1800,
+                const int height = 1600) {
     // initialize glfw
     glfwInit();
 
@@ -47,7 +48,7 @@ int main() {
         delta_time = now - last_time;
         last_time = now;
 
-        angle += 10.0f * delta_time;
+        angle += 30.0f * delta_time;
         if (angle > 360.0f)
             angle -= 360.0f;
 
